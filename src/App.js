@@ -5,22 +5,21 @@ const App = () => {
   const [newReport, setNewReport] = useState("");
   const [totalTime, setTotalTime] = useState(0);
   const [detailedReport, setDetailedReport] = useState("");
+  const [editIndex, setEditIndex] = useState(null);
+  const [editDescription, setEditDescription] = useState("");
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString();
   };
-  
 
   useEffect(() => {
     const storedReports = localStorage.getItem("reports");
-   
+
     if (storedReports) {
       setReports(JSON.parse(storedReports));
     }
   }, []);
-
-
 
   const handleAddReport = () => {
     if (!newReport.trim()) return;
@@ -32,7 +31,7 @@ const App = () => {
       timeTaken: 0,
     };
     setReports([...reports, newReportObj]);
-      localStorage.setItem("reports", JSON.stringify([...reports, newReportObj]));
+    localStorage.setItem("reports", JSON.stringify([...reports, newReportObj]));
 
     setNewReport("");
   };
@@ -46,6 +45,26 @@ const App = () => {
     updatedReports[index].doneTime = endTime;
     updatedReports[index].timeTaken = timeTaken;
     setReports(updatedReports);
+  };
+
+  const handleDelete = (index) => {
+    const updatedReports = reports.filter((_, i) => i !== index);
+    setReports(updatedReports);
+    localStorage.setItem("reports", JSON.stringify(updatedReports));
+  };
+
+  const handleEdit = (index) => {
+    setEditIndex(index);
+    setEditDescription(reports[index].report);
+  };
+
+  const handleSaveEdit = (index) => {
+    const updatedReports = [...reports];
+    updatedReports[index].report = editDescription;
+    setReports(updatedReports);
+    localStorage.setItem("reports", JSON.stringify(updatedReports));
+    setEditIndex(null);
+    setEditDescription("");
   };
 
   const calculateTotalTime = () => {
@@ -101,6 +120,10 @@ const App = () => {
       backgroundColor: "#28a745",
       color: "#fff",
     },
+    danger: {
+      backgroundColor: "#dc3545",
+      color: "#fff",
+    },
     table: {
       width: "100%",
       borderCollapse: "collapse",
@@ -121,114 +144,140 @@ const App = () => {
   };
 
   return (
-      <div style={styles.page}>
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-          <input
-            type="text"
-            placeholder="Enter report description"
-            value={newReport}
-            onChange={(e) => setNewReport(e.target.value)}
-            style={styles.input}
-          />
-          <button
-            onClick={handleAddReport}
-            style={{ ...styles.button, ...styles.primary }}
-          >
-            Add Report
-          </button>
-        </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>#</th>
-                <th style={styles.th}>Report Description</th>
-                <th style={styles.th}>Start Time</th>
-                <th style={styles.th}>Done Time</th>
-                <th style={styles.th}>Time Taken (Minutes)</th>
-                <th style={styles.th}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((report, index) => (
-                <tr key={index}>
-                  <td style={styles.td}>{index + 1}</td>
-                  <td style={styles.td}>{report.report}</td>
-                  <td style={styles.td}>{formatTime(report.startTime)}</td>
-                  <td style={styles.td}>
-                    {report.done ? formatTime(report.doneTime) : "Not Done Yet"}
-                  </td>
-                  <td style={styles.td}>
-                    {report.done
-                      ? `${report.timeTaken.toFixed(2)} min`
-                      : "In Progress"}
-                  </td>
-                  <td style={styles.td}>
-                    {!report.done ? (
-                      <button
-                        onClick={() => handleDone(index)}
-                        style={{ ...styles.button, ...styles.success }}
-                      >
-                        Mark as Done
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: "14px", fontWeight: "bold", color: "#28a745" }}>
-                        Completed
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ marginTop: "20px", textAlign: "center" }}>
-          <button
-            onClick={calculateTotalTime}
-            style={{ ...styles.button, backgroundColor: "#ffc107", color: "#000" }}
-          >
-            Calculate Total Time
-          </button>
-          {totalTime > 0 && (
-            <div style={{ marginTop: "10px", fontSize: "18px", color: "#333" }}>
-              <strong>Total Time: {totalTime.toFixed(2)} Minutes</strong>
-            </div>
-          )}
-        </div>
-
-        {detailedReport && (
-          <div style={{ marginTop: "20px", textAlign: "center" }}>
-            <h3>Detailed Report</h3>
-            <textarea
-              readOnly
-              value={detailedReport}
-              style={{
-                width: "100%",
-                height: "150px",
-                padding: "10px",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                fontSize: "14px",
-                background: "#f9f9f9",
-                color: "#333",
-                resize: "none",
-              }}
-            />
-          </div>
-        )}
-
-        <div style={{ marginTop: "20px", textAlign: "center" }}>
-          <button
-            onClick={clearAllData}
-            style={{ ...styles.button, backgroundColor: "#dc3545", color: "#fff" }}
-          >
-            Clear All Data
-          </button>
-        </div>
+    <div style={styles.page}>
+      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <input
+          type="text"
+          placeholder="Enter report description"
+          value={newReport}
+          onChange={(e) => setNewReport(e.target.value)}
+          style={styles.input}
+        />
+        <button onClick={handleAddReport} style={{ ...styles.button, ...styles.primary }}>
+          Add Report
+        </button>
       </div>
 
+      <div style={{ overflowX: "auto" }}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>#</th>
+              <th style={styles.th}>Report Description</th>
+              <th style={styles.th}>Start Time</th>
+              <th style={styles.th}>Done Time</th>
+              <th style={styles.th}>Time Taken (Minutes)</th>
+              <th style={styles.th}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.map((report, index) => (
+              <tr key={index}>
+                <td style={styles.td}>{index + 1}</td>
+                <td style={styles.td}>
+                  {editIndex === index ? (
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      style={styles.input}
+                    />
+                  ) : (
+                    report.report
+                  )}
+                </td>
+                <td style={styles.td}>{formatTime(report.startTime)}</td>
+                <td style={styles.td}>
+                  {report.done ? formatTime(report.doneTime) : "Not Done Yet"}
+                </td>
+                <td style={styles.td}>
+                  {report.done ? `${report.timeTaken.toFixed(2)} min` : "In Progress"}
+                </td>
+                <td style={styles.td}>
+                  {!report.done ? (
+                    <button
+                      onClick={() => handleDone(index)}
+                      style={{ ...styles.button, ...styles.success }}
+                    >
+                      Mark as Done
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: "14px", fontWeight: "bold", color: "#28a745" }}>
+                      Completed
+                    </span>
+                  )}
+                  {editIndex === index ? (
+                    <button
+                      onClick={() => handleSaveEdit(index)}
+                      style={{ ...styles.button, ...styles.success, marginLeft: "10px" }}
+                    >
+                      Save Edit
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleEdit(index)}
+                      style={{ ...styles.button, backgroundColor: "#ffc107", color: "#000", marginLeft: "10px" }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(index)}
+                    style={{ ...styles.button, ...styles.danger, marginLeft: "10px" }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: "20px", textAlign: "center" }}>
+        <button
+          onClick={calculateTotalTime}
+          style={{ ...styles.button, backgroundColor: "#ffc107", color: "#000" }}
+        >
+          Calculate Total Time
+        </button>
+        {totalTime > 0 && (
+          <div style={{ marginTop: "10px", fontSize: "18px", color: "#333" }}>
+            <strong>Total Time: {totalTime.toFixed(2)} Minutes</strong>
+          </div>
+        )}
+      </div>
+
+      {detailedReport && (
+        <div style={{ marginTop: "20px", textAlign: "center" }}>
+          <h3>Detailed Report</h3>
+          <textarea
+            readOnly
+            value={detailedReport}
+            style={{
+              width: "100%",
+              height: "150px",
+              padding: "10px",
+              border: "1px solid #ddd",
+              borderRadius: "4px",
+              fontSize: "14px",
+              background: "#f9f9f9",
+              color: "#333",
+              resize: "none",
+            }}
+          />
+        </div>
+      )}
+
+      <div style={{ marginTop: "20px", textAlign: "center" }}>
+        <button
+          onClick={clearAllData}
+          style={{ ...styles.button, ...styles.danger }}
+        >
+          Clear All Reports
+        </button>
+      </div>
+    </div>
   );
 };
 
