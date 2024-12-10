@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 
+import DataTable from "react-data-table-component";
 const App = () => {
   const [reports, setReports] = useState([]);
   const [newReport, setNewReport] = useState("");
@@ -8,10 +9,7 @@ const App = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [editDescription, setEditDescription] = useState("");
 
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString();
-  };
+
 
   useEffect(() => {
     const storedReports = localStorage.getItem("reports");
@@ -27,6 +25,7 @@ const App = () => {
       report: newReport,
       startTime: Date.now(),
       done: false,
+      hold: false,
       doneTime: null,
       timeTaken: 0,
     };
@@ -44,7 +43,16 @@ const App = () => {
     updatedReports[index].done = true;
     updatedReports[index].doneTime = endTime;
     updatedReports[index].timeTaken = timeTaken;
+    updatedReports[index].hold = false; // Ensure task is no longer on hold
     setReports(updatedReports);
+    localStorage.setItem("reports", JSON.stringify(updatedReports));
+  };
+
+  const handleHold = (index) => {
+    const updatedReports = [...reports];
+    updatedReports[index].hold = !updatedReports[index].hold;
+    setReports(updatedReports);
+    localStorage.setItem("reports", JSON.stringify(updatedReports));
   };
 
   const handleDelete = (index) => {
@@ -68,24 +76,41 @@ const App = () => {
   };
 
   const calculateTotalTime = () => {
-    const totalMinutes = reports.reduce((acc, report) => acc + report.timeTaken, 0);
+    const totalMinutes = reports.reduce(
+      (acc, report) => acc + report.timeTaken,
+      0
+    );
     setTotalTime(totalMinutes);
 
-    const reportSummary = reports
+  let reportSummary = "DAILY REPORT SUMMARY\n\n";
+
+     reportSummary = reports
       .map(
         (report, index) =>
           `${index + 1}. ${report.report} | Start Time: ${formatTime(
             report.startTime
-          )} | Done Time: ${report.doneTime ? formatTime(report.doneTime) : "Pending"} | Time Taken: ${
-            report.done ? `${report.timeTaken.toFixed(2)} minutes` : "In Progress"
+          )} | Done Time: ${
+            report.doneTime ? formatTime(report.doneTime) : "Pending"
+          } | Time Taken: ${
+            report.done
+              ? `${report.timeTaken.toFixed(2)} minutes`
+              : "In Progress"
+          } | Status: ${
+            report.hold ? "On Hold" : report.done ? "Completed" : "In Progress"
           }`
       )
       .join("\n");
+ 
+    reportSummary = `${reportSummary}\n\nTotal Time: ${totalMinutes.toFixed(
+      2
+    )} minutes`;
+
+
+
     setDetailedReport(reportSummary);
   };
 
   const clearAllData = () => {
-    console.log("Clearing all data...");
     setReports([]);
     setTotalTime(0);
     setDetailedReport("");
@@ -120,9 +145,16 @@ const App = () => {
       backgroundColor: "#28a745",
       color: "#fff",
     },
+    warning: {
+      backgroundColor: "#ffc107",
+      color: "#000",
+    },
     danger: {
       backgroundColor: "#dc3545",
       color: "#fff",
+    },
+    tableWrapper: {
+      overflowX: "auto",
     },
     table: {
       width: "100%",
@@ -143,6 +175,127 @@ const App = () => {
     },
   };
 
+
+  const columns = [
+    {
+      name: "#",
+      selector: (row, index) => index + 1,
+      sortable: true,
+      width: "60px",
+    },
+    {
+      name: "Report Description",
+      selector: (row) => row.report,
+      cell: (row, index) =>
+        editIndex === index ? (
+          <input
+            type="text"
+            value={row.report}
+            onChange={(e) => setEditDescription(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "5px",
+            }}
+          />
+        ) : (
+          <span style={{ wordBreak: "break-word", maxWidth: "800px", whiteSpace: "normal" }}>
+            {row.report}
+          </span>
+        ),
+    },
+    {
+      name: "Start Time",
+      selector: (row) => formatTime(row.startTime),
+    },
+    {
+      name: "Done Time",
+      selector: (row) => (row.done ? formatTime(row.doneTime) : "Not Done Yet"),
+    },
+    {
+      name: "Time Taken (Minutes)",
+      selector: (row) =>
+        row.done ? `${row.timeTaken.toFixed(2)} min` : "In Progress",
+    },
+    {
+      name: "Actions",
+      cell: (row, index) => (
+        <div style={{ display: "flex", gap: "5px" }}>
+          {!row.done && (
+            <button
+              onClick={() => handleHold(index)}
+              style={{
+                backgroundColor: row.hold ? "#ffc107" : "#007bff",
+                color: "#fff",
+                padding: "5px 10px",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              {row.hold ? "Resume" : "Hold"}
+            </button>
+          )}
+          {!row.done && !row.hold && (
+            <button
+              onClick={() => handleDone(index)}
+              style={{
+                backgroundColor: "#28a745",
+                color: "#fff",
+                padding: "5px 10px",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              Mark as Done
+            </button>
+          )}
+          {editIndex === index ? (
+            <button
+              onClick={() => handleSaveEdit(index)}
+              style={{
+                backgroundColor: "#28a745",
+                color: "#fff",
+                padding: "5px 10px",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              Save
+            </button>
+          ) : (
+            <button
+              onClick={() => handleEdit(index)}
+              style={{
+                backgroundColor: "#ffc107",
+                color: "#000",
+                padding: "5px 10px",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              Edit
+            </button>
+          )}
+          <button
+            onClick={() => handleDelete(index)}
+            style={{
+              backgroundColor: "#dc3545",
+              color: "#fff",
+              padding: "5px 10px",
+              border: "none",
+              borderRadius: "4px",
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  // Format time function (use your own implementation)
+  const formatTime = (time) => {
+    return new Date(time).toLocaleString(); // Example formatting
+  };
   return (
     <div style={styles.page}>
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
@@ -153,128 +306,59 @@ const App = () => {
           onChange={(e) => setNewReport(e.target.value)}
           style={styles.input}
         />
-        <button onClick={handleAddReport} style={{ ...styles.button, ...styles.primary }}>
+        <button
+          onClick={handleAddReport}
+          style={{ ...styles.button, ...styles.primary }}
+        >
           Add Report
         </button>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>#</th>
-              <th style={styles.th}>Report Description</th>
-              <th style={styles.th}>Start Time</th>
-              <th style={styles.th}>Done Time</th>
-              <th style={styles.th}>Time Taken (Minutes)</th>
-              <th style={styles.th}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report, index) => (
-              <tr key={index}>
-                <td style={styles.td}>{index + 1}</td>
-                <td style={styles.td}>
-                  {editIndex === index ? (
-                    <input
-                      type="text"
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      style={styles.input}
-                    />
-                  ) : (
-                    report.report
-                  )}
-                </td>
-                <td style={styles.td}>{formatTime(report.startTime)}</td>
-                <td style={styles.td}>
-                  {report.done ? formatTime(report.doneTime) : "Not Done Yet"}
-                </td>
-                <td style={styles.td}>
-                  {report.done ? `${report.timeTaken.toFixed(2)} min` : "In Progress"}
-                </td>
-                <td style={styles.td}>
-                  {!report.done ? (
-                    <button
-                      onClick={() => handleDone(index)}
-                      style={{ ...styles.button, ...styles.success }}
-                    >
-                      Mark as Done
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: "14px", fontWeight: "bold", color: "#28a745" }}>
-                      Completed
-                    </span>
-                  )}
-                  {editIndex === index ? (
-                    <button
-                      onClick={() => handleSaveEdit(index)}
-                      style={{ ...styles.button, ...styles.success, marginLeft: "10px" }}
-                    >
-                      Save Edit
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleEdit(index)}
-                      style={{ ...styles.button, backgroundColor: "#ffc107", color: "#000", marginLeft: "10px" }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(index)}
-                    style={{ ...styles.button, ...styles.danger, marginLeft: "10px" }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={styles.tableWrapper}>
+      <DataTable
+      title="Reports"
+      columns={columns}
+      data={reports}
+      pagination
+      responsive
+      highlightOnHover
+    />
       </div>
 
       <div style={{ marginTop: "20px", textAlign: "center" }}>
         <button
           onClick={calculateTotalTime}
-          style={{ ...styles.button, backgroundColor: "#ffc107", color: "#000" }}
+          style={{ ...styles.button, ...styles.warning }}
         >
           Calculate Total Time
         </button>
         {totalTime > 0 && (
           <div style={{ marginTop: "10px", fontSize: "18px", color: "#333" }}>
-            <strong>Total Time: {totalTime.toFixed(2)} Minutes</strong>
+            <strong>Total Time: {totalTime.toFixed(2)} minutes</strong>
           </div>
         )}
-      </div>
-
-      {detailedReport && (
-        <div style={{ marginTop: "20px", textAlign: "center" }}>
-          <h3>Detailed Report</h3>
-          <textarea
-            readOnly
-            value={detailedReport}
-            style={{
-              width: "100%",
-              height: "150px",
-              padding: "10px",
-              border: "1px solid #ddd",
-              borderRadius: "4px",
-              fontSize: "14px",
-              background: "#f9f9f9",
-              color: "#333",
-              resize: "none",
-            }}
-          />
-        </div>
-      )}
-
-      <div style={{ marginTop: "20px", textAlign: "center" }}>
+        <textarea
+          value={detailedReport}
+          readOnly
+          style={{
+            marginTop: "20px",
+            width: "100%",
+            height: "200px",
+            padding: "10px",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            resize: "none",
+          }}
+        />
         <button
           onClick={clearAllData}
-          style={{ ...styles.button, ...styles.danger }}
+          style={{
+            ...styles.button,
+            ...styles.danger,
+            marginTop: "10px",
+          }}
         >
-          Clear All Reports
+          Clear All Data
         </button>
       </div>
     </div>
