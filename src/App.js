@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-
 import DataTable from "react-data-table-component";
 const App = () => {
   const [reports, setReports] = useState([]);
@@ -9,11 +8,8 @@ const App = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [editDescription, setEditDescription] = useState("");
 
-
-
   useEffect(() => {
     const storedReports = localStorage.getItem("reports");
-
     if (storedReports) {
       setReports(JSON.parse(storedReports));
     }
@@ -26,31 +22,52 @@ const App = () => {
       startTime: Date.now(),
       done: false,
       hold: false,
+      holdStartTime: null,
+      totalHoldTime: 0,
       doneTime: null,
       timeTaken: 0,
     };
     setReports([...reports, newReportObj]);
     localStorage.setItem("reports", JSON.stringify([...reports, newReportObj]));
-
     setNewReport("");
   };
 
   const handleDone = (index) => {
     const updatedReports = [...reports];
-    const endTime = Date.now();
-    const timeTaken = (endTime - updatedReports[index].startTime) / 60000;
+    const report = updatedReports[index];
 
-    updatedReports[index].done = true;
-    updatedReports[index].doneTime = endTime;
-    updatedReports[index].timeTaken = timeTaken;
-    updatedReports[index].hold = false; // Ensure task is no longer on hold
+    if (report.hold) {
+      // Ensure task is not on hold when marking as done
+      const holdDuration = (Date.now() - report.holdStartTime) / 60000;
+      report.totalHoldTime = (report.totalHoldTime || 0) + holdDuration;
+      report.holdStartTime = null;
+      report.hold = false;
+    }
+
+    const endTime = Date.now();
+    const timeTaken = (endTime - report.startTime) / 60000; // Convert to minutes
+    report.done = true;
+    report.doneTime = endTime;
+    report.timeTaken = timeTaken - (report.totalHoldTime || 0); // Exclude hold time
     setReports(updatedReports);
     localStorage.setItem("reports", JSON.stringify(updatedReports));
   };
 
   const handleHold = (index) => {
     const updatedReports = [...reports];
-    updatedReports[index].hold = !updatedReports[index].hold;
+    const report = updatedReports[index];
+
+    if (!report.hold) {
+      // Start hold
+      report.holdStartTime = Date.now();
+    } else {
+      // Resume: Calculate total hold time
+      const holdDuration = (Date.now() - report.holdStartTime) / 60000; // Convert to minutes
+      report.totalHoldTime = (report.totalHoldTime || 0) + holdDuration;
+      report.holdStartTime = null; // Clear hold start time
+    }
+
+    report.hold = !report.hold; // Toggle hold state
     setReports(updatedReports);
     localStorage.setItem("reports", JSON.stringify(updatedReports));
   };
@@ -76,15 +93,19 @@ const App = () => {
   };
 
   const calculateTotalTime = () => {
+    // Calculate total time in minutes
     const totalMinutes = reports.reduce(
       (acc, report) => acc + report.timeTaken,
       0
     );
-    setTotalTime(totalMinutes);
 
-  let reportSummary = "DAILY REPORT SUMMARY\n\n";
+    // Convert total time to hours and minutes
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = Math.round(totalMinutes % 60);
 
-     reportSummary = reports
+    let reportSummary = "DAILY REPORT SUMMARY\n\n";
+
+    reportSummary += reports
       .map(
         (report, index) =>
           `${index + 1}. ${report.report} | Start Time: ${formatTime(
@@ -93,19 +114,17 @@ const App = () => {
             report.doneTime ? formatTime(report.doneTime) : "Pending"
           } | Time Taken: ${
             report.done
-              ? `${report.timeTaken.toFixed(2)} minutes`
+              ? `${Math.floor(report.timeTaken / 60)}h ${Math.round(
+                  report.timeTaken % 60
+                )}m`
               : "In Progress"
           } | Status: ${
             report.hold ? "On Hold" : report.done ? "Completed" : "In Progress"
           }`
       )
       .join("\n");
- 
-    reportSummary = `${reportSummary}\n\nTotal Time: ${totalMinutes.toFixed(
-      2
-    )} minutes`;
 
-
+    reportSummary += `\n\nTotal Time: ${totalHours}h ${remainingMinutes}m`;
 
     setDetailedReport(reportSummary);
   };
@@ -175,7 +194,6 @@ const App = () => {
     },
   };
 
-
   const columns = [
     {
       name: "#",
@@ -198,7 +216,13 @@ const App = () => {
             }}
           />
         ) : (
-          <span style={{ wordBreak: "break-word", maxWidth: "800px", whiteSpace: "normal" }}>
+          <span
+            style={{
+              wordBreak: "break-word",
+              maxWidth: "800px",
+              whiteSpace: "normal",
+            }}
+          >
             {row.report}
           </span>
         ),
@@ -296,6 +320,7 @@ const App = () => {
   const formatTime = (time) => {
     return new Date(time).toLocaleString(); // Example formatting
   };
+
   return (
     <div style={styles.page}>
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
@@ -315,14 +340,14 @@ const App = () => {
       </div>
 
       <div style={styles.tableWrapper}>
-      <DataTable
-      title="Reports"
-      columns={columns}
-      data={reports}
-      pagination
-      responsive
-      highlightOnHover
-    />
+        <DataTable
+          title="Reports"
+          columns={columns}
+          data={reports}
+          pagination
+          responsive
+          highlightOnHover
+        />
       </div>
 
       <div style={{ marginTop: "20px", textAlign: "center" }}>
