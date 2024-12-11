@@ -73,6 +73,10 @@ const App = () => {
   };
 
   const handleDelete = (index) => {
+    // ADD CONFIRM TO DELETE REPORT
+    if (!window.confirm("Are you sure you want to delete this report?")) return;
+
+
     const updatedReports = reports.filter((_, i) => i !== index);
     setReports(updatedReports);
     localStorage.setItem("reports", JSON.stringify(updatedReports));
@@ -106,23 +110,20 @@ const App = () => {
     let reportSummary = "DAILY REPORT SUMMARY\n\n";
 
     reportSummary += reports
-      .map(
-        (report, index) =>
-          `${index + 1}. ${report.report} | Start Time: ${formatTime(
-            report.startTime
-          )} | Done Time: ${
-            report.doneTime ? formatTime(report.doneTime) : "Pending"
-          } | Time Taken: ${
-            report.done
-              ? `${Math.floor(report.timeTaken / 60)}h ${Math.round(
-                  report.timeTaken % 60
-                )}m`
-              : "In Progress"
-          } | Status: ${
-            report.hold ? "On Hold" : report.done ? "Completed" : "In Progress"
-          }`
-      )
-      .join("\n");
+  .map(
+    (report, index) =>
+      `${index + 1}. ${report.report} | Start Time: ${formatTime(
+        report.startTime
+      )} | Done Time: ${
+        report.doneTime ? formatTime(report.doneTime) : "Pending"
+      } | Time Taken: ${
+        report.done ? formatDuration(report.timeTaken) : "In Progress"
+      } | Status: ${
+        report.hold ? "On Hold" : report.done ? "Completed" : "In Progress"
+      }`
+  )
+  .join("\n");
+
 
     reportSummary += `\n\nTotal Time: ${totalHours}h ${remainingMinutes}m`;
 
@@ -194,6 +195,13 @@ const App = () => {
     },
   };
 
+  const formatDuration = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = Math.round(minutes % 60);
+    return hours > 0 ? `${hours}h ${remainingMinutes}m` : `${remainingMinutes}m`;
+  };
+  
+
   const columns = [
     {
       name: "#",
@@ -236,10 +244,17 @@ const App = () => {
       selector: (row) => (row.done ? formatTime(row.doneTime) : "Not Done Yet"),
     },
     {
-      name: "Time Taken (Minutes)",
-      selector: (row) =>
-        row.done ? `${row.timeTaken.toFixed(2)} min` : "In Progress",
+      name: "Time Taken",
+      selector: (row) => {
+        if (row.done) {
+          const hours = Math.floor(row.timeTaken / 60);
+          const minutes = Math.round(row.timeTaken % 60);
+          return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        }
+        return "In Progress";
+      },
     },
+    
     {
       name: "Actions",
       cell: (row, index) => (
