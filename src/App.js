@@ -337,6 +337,10 @@ const App = () => {
   };
 
   return (
+    <div>
+    <h1 style={{ textAlign: "start" }}>Daily Report Tracker</h1>
+
+
     <div style={styles.page}>
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         <input
@@ -401,6 +405,7 @@ const App = () => {
           Clear All Data
         </button>
       </div>
+    </div>
     </div>
   );
 };
